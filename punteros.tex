@@ -1,0 +1,423 @@
+% !TEX encoding = UTF-8 Unicode
+\documentclass[12pt,a4paper,spanish]{article}
+\usepackage{graphics}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{babel}
+\usepackage{url}
+
+\begin{document}
+
+\title{Punteros, Arreglos y Cadenas en \textsf{C}}
+\author{Edgardo Hames \\ \small{Revisado y corregido por Natalia B. Bidart, 13-08-2006}
+ \\ \small{y después por Daniel F. Moisset, 24-08-2007}}
+\date{}
+
+\maketitle
+\makeatother
+
+\subsection*{Punteros y direcciones}
+
+\textit{Organización de la memoria:} Una computadora típica tiene un arreglo de
+celdas de memoria numeradas o direccionables que pueden ser manipuladas
+individualmente o en grupos contiguos. Una situación común es que un byte sea un
+caracter (\verb+char+), un par de celdas de un byte sea tratado como un entero
+corto (\verb+short+) y cuatro bytes adyacentes formen un entero largo (\verb+long+).
+Un \textit{puntero} es una variable que contiene la dirección de una variable. El
+uso de punteros es de más bajo nivel, y ofrece más expresividad. A veces conduce
+a un código más compacto y en algunos casos más eficiente; la desventaja es que
+sin cuidado, es fácil cometer errores.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics{memory.eps}
+\caption{Organización de la memoria}
+\label{fig: mem_org}
+\end{center}
+\end{figure}
+
+\textit{Operadores:}
+\begin{itemize}
+
+\item El operador unario \texttt{\&} retorna la dirección de memoria de
+una variable, por lo tanto:
+
+\begin{verbatim}
+p = &i;
+\end{verbatim}
+
+asigna la dirección de la variable \verb|i| a la variable puntero
+\verb|p| y se dice que \verb|p| ``apunta a'' \verb|i|. Sólo se puede
+aplicar a variables y elementos de arreglos\footnote{es decir, a cualquier cosa
+que indique una celda de memoria. Comparese con otros operadores como que
+pueden aplicarse a cualquier cosa que tenga un valor}. Ver Fig. \ref{fig:
+mem_org}.
+
+\item El operador unario \verb|*| es el operador de
+\textit{indirección} o de \textit{dereferenciación}; cuando se
+aplica a un puntero, accede al contenido de la memoria apuntada por
+ese puntero. \verb+Ver ejemplo ej1.c+.
+
+\begin{verbatim}
+j = *p; /* j tiene ahora el valor de i */
+\end{verbatim}
+
+\item El lenguaje C nos permite comprobar los tipos de los objetos apuntados
+por punteros. Esto se logra definiendo para cada tipo $T$ (por ejemplo
+\verb|int|), un tipo para los puntores asociados (por ejemplo, puntero a 
+\verb|int|). Para definir una variable que apunte a celdas con valores
+de tipo $T$, se declara esta como si fuera de tipo $T$, pero anteponiendo
+el caracter \verb|*| al nombre de la variable. Por ejemplo:
+
+\begin{verbatim}
+int *p;
+\end{verbatim}
+
+Esta notación intenta ser mnemónica, nos dice que la expresión
+\verb|*p| es un \verb|int|. Aunque cada puntero apunta a un tipo
+de dato específico, tambien hay un tipo llamado \verb|void *| (sería un
+``puntero a void'' que puede contener cualquier tipo de punteros.
+
+\item Como cualquier otra variable, es conveniente inicializar un
+puntero en su declaración. Si el valor no se conocerá hasta más adelante
+en el código, una buena convención es usar \verb+NULL+. \verb|NULL| es un valor
+especial de puntero que no referencia a ninguna celda particular.
+
+\begin{verbatim}
+int *p = NULL;
+\end{verbatim}
+
+\item Como los punteros son variables, pueden ser usados sin ser
+dereferenciados. Por ejemplo, si \verb+p+ y \verb+q+ son punteros a
+\verb+int+,
+
+\begin{verbatim}
+p = q;
+\end{verbatim}
+
+copia el contenido de \verb+q+ en \verb+p+, o sea, copia la
+dirección a la que apunta \verb+q+ en \verb+p+, haciendo que
+\verb+p+ apunte a lo mismo que apunta \verb+q+.
+
+\item Los operadores \verb+&+ y \verb+*+ asocian con mayor precedencia
+que los operadores aritméticos. Por lo tanto, cualquiera de las
+siguientes instrucciones incrementa en 1 el contenido de memoria
+apuntada por \verb+p+.
+
+\begin{verbatim}
+*p = *p + 1;
+*p += 1;
+++*p;
+(*p)++; /* Notar el uso de paréntesis. */
+\end{verbatim}
+
+\textbf{¡Cuidado!} Los operadores unarios \verb+*+ y \verb-++- asocian
+de derecha a izquierda, por lo tanto, el uso de paréntesis suele ser
+necesario.
+
+\item El operador \verb-++- aplicado a un puntero hace que apunte a la
+celda siguiente. Esto suele ser útil al manipular arrays, ya que C nos garantiza
+que las celdas de un array son contiguas. \verb+Ver ejemplo ej2.c+. No es útil
+en otros casos, ya que (excepto por el caso del array) una implementación de C
+puede elegir asignar cual celda corresponde a cual variable en forma bastante
+arbitraria.
+
+\item En \textsf{C} el paso de parámetros a funciones es
+por valor, cuando deseamos que una función pueda modificar una variable a 
+elección del del llamador debemos usar punteros. Ver Fig. \ref{fig:ref_pass}.
+\verb+Ver ejemplo ej3.c+
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics{swap.eps}
+\caption{Paso de referencias a funciones.}
+\label{fig:ref_pass}
+\end{center}
+\end{figure}
+
+\end{itemize}
+
+\subsection*{Punteros y Arreglos}
+
+En \textsf{C}, hay una relación muy fuerte entre punteros y arreglos.
+Cualquier operación que pueda ser lograda indexando un arreglo también
+pude ser conseguida con punteros. La declaración:
+
+\begin{verbatim}
+int a[10];
+\end{verbatim}
+
+define un arreglo de tamaño 10, o sea un bloque de 10 enteros
+consecutivos que se acceden a través de \verb+a[0]+, \verb+a[1]+,
+\ldots, \verb+a[9]+. Ver Fig. \ref{fig:array}.
+
+\begin{figure}[htbp]
+\begin{center}
+\includegraphics{array.eps}
+\caption{Arreglo de 10 caracteres.}
+\label{fig:array}
+\end{center}
+\end{figure}
+
+La notación \verb+a[i]+ hace referencia al \verb+i+-ésimo elemento del arreglo.
+Supongamos que \verb+pa+ es un puntero a enteros, declarado como
+
+\begin{verbatim}
+int *pa;
+\end{verbatim}
+
+entonces la asignación
+
+\begin{verbatim}
+pa = &a[0];
+\end{verbatim}
+
+hace que \verb+pa+ apunte al elemento cero de \verb+a+, o sea \verb+pa+
+contiene la dirección de \verb+a[0]+. El nombre de un arreglo es un
+puntero a su primer elemento (con lo cual podemos escribir el ejemplo anterior
+como \verb|pa = a|).
+
+Si \verb+pa+ apunta a un elemento particular de un arreglo, entonces por
+definición \verb-pa+1- apunta al siguiente elemento, \verb-pa+i- apunta
+\verb+i+ elementos más adelante y \verb+pa-1+ apunta \verb+i+ elementos
+antes. Por lo tanto si \verb+pa+ apunta a \verb+a[0]+,
+
+\begin{verbatim}
+*(pa + 1);
+\end{verbatim}
+
+referencia al contenido de \verb+a[1]+, \verb-pa+i- es la dirección de
+\verb+a[i]+ y \verb-*(pa+i)- es el contenido de \verb+a[i]+.
+
+Hagamos algunas cuentas sencillas \ldots
+
+\[ a[i] = *(pa + i) = *(i + pa) = i[a] \]
+
+¿Será cierto lo que nos dicen nuestras clases de álgebra?
+\verb+Ver ejemplo ej4.c+.
+
+\subsection*{Cadenas de caracteres}
+
+\begin{itemize}
+
+\item Una variable de tipo \texttt{char} sólo puede almacenar un único
+caracter.
+
+\begin{verbatim}
+char c = 'A';
+\end{verbatim}
+
+\item Un \textit{string} es una secuencia de caracteres. Por ej: "Hallo,
+Welt!"
+
+\item Una mala noticia: \textbf{\textsf{C} no soporta el tipo string}.
+
+\item En \textsf{C} las operaciones sobre \textit{strings} en realidad trabajan
+sobre arreglos de caracteres que siguen algunas convenciones. Esencialmente
+van los caracteres en el orden en el que se leen, el string no puede contener
+el caracter especial \verb|'\0'|, y al final de la cadena se agrega un
+\verb|'\0'| (que no es parte de la cadena, pero que muchas funciones utilizan
+para saber donde termina el string).
+
+\item Generalmente, una variable de tipo \textit{string} se declara como
+un puntero a \verb+char+ (en realidad, un puntero al primer elemento de un
+array de \verb|char|, que ya vimos que en C es casi lo mismo). Ejemplos:
+
+\begin{verbatim}
+char saludo_arr[] = "Salut, mundi.";
+char *saludo_ptr = "Salut, mundi.";
+\end{verbatim}
+
+Hay una diferencia importante entre las dos declaraciones mostradas. En
+la primera, \verb+saludo_arr+ es un array, de tamaño 13+1 (el 1 suma por
+el caracter terminador \verb|'\0'|). Los caracteres del array pueden ser
+cambiados, pero \verb+saludo_arr+ siempre va a apuntar a la misma zona
+de memoria.
+
+En cambio, el puntero \verb+saludo_ptr+ puede ser eventualmente
+re-apuntado a otra zona de memoria, pero si se trata de modificar el
+contenido del string se obtiene un resultado indefinido\footnote{Cuando el
+estándar de C dice ``esto produce un resultado indefinido'' quiere decir que
+su programa puede fallar intermitentemente, de formas distintas, y en
+condiciones poco esperadas.}.
+
+\item Para acceder al string usamos la variable
+\verb|saludo_{arr,ptr}|. Ejemplo usando \verb+printf+:
+
+\begin{verbatim}
+printf ("El contenido de saludo_ptr es: %s", saludo_ptr);
+\end{verbatim}
+
+\item Por convención, el caracter nulo \verb+\0+ marca el fin del
+string.
+
+\begin{verbatim}
+char *mensaje = {`H',`o',`l',`a',`,',` ',`m',`u',`n',`d',`o',`\0'};
+char *mensaje = "Hola, mundo";
+\end{verbatim}
+
+\item Aunque a veces al caracter \verb+`\0'+ se le dice ``caracter nulo'' o
+inlcuso NUL (con una sola `L'!), no tiene nada que ver con
+\verb+NULL+. Son valores de distintos tipos. Además \verb+`\0'+ es distinto
+de \verb+`0'+ (el caracter del simbolo ``cero'' usado 2 veces en la cadena 
+"007").
+
+\begin{verbatim}
+char *ptr;
+char c;
+
+if (c == '\0') {
+    /* c es el caracter nulo. */
+}
+if (!c) {
+    /* c es el caracter nulo. */
+}
+if (*ptr == '\0') {
+    /* p apunta al caracter nulo. */
+}
+if (!*ptr) {
+    /* p apunta a un caracter nulo. */
+}
+
+\end{verbatim}
+
+parecido pero distinto de \ldots
+
+\begin{verbatim}
+char *ptr;
+
+if (!ptr) {
+    /* p es un puntero nulo. */
+}
+\end{verbatim}
+
+\end{itemize}
+
+\subsection*{Problemas con la librería de cadenas de \textsf{C}}
+
+\begin{itemize}
+
+\item El uso de \verb+\0+ para denotar el fin del string implica que
+determinar la longitud de la cadena es una operación de orden lineal
+$O(n)$ cuando puede ser constante $O(1)$.
+
+\item Se impone una interpretación para valor del caracter \verb+\0+.
+Por lo tanto, \verb+\0+ no puede formar parte de un string.
+
+\item \verb+fgets+ tiene la inusual semántica de ignorar los
+\verb+\0+ que encuentra antes del caracter \verb+\n+.
+
+\item No hay administración de memoria y las operaciones provistas
+(\verb+strcpy+, \verb+strcat+, \verb+sprintf+, etc.) son lugares comunes
+para el desbordamiento de buffers\footnote{Un desbordamiento de buffer es cuando
+un programa escribe fuera de los limites de un array. Muchas veces pueden
+explotarse para tomar el control del programa y hacer que haga cosas que el
+programador no quería, como mandar SPAM desde nuestra cuenta de correo}.
+
+\item Pasar \verb+NULL+ a la librería de strings de \textsf{C} provoca
+un acceso a puntero nulo.
+
+\end{itemize}
+
+Hay un canción que hace \textit{referencia} a los strings en \textsf{C},
+se llama \textit{``Lo que ves es lo que hay''}\footnote{Charly García,
+Álbum ``El aguante'' :-)}.
+
+\subsection*{La destreza y la memoria son buenas si van en yunta}
+
+\begin{itemize}
+
+\item Arrays de caracteres declarados como \verb+const+ no pueden ser
+modificados. Por lo tanto, es de muy buen estilo declarar strings que no
+deben ser modificados con tipo \verb+const char *+.
+
+\item La memoria asignada para un array de caracteres puede extenderse
+más allá del caracter nulo. A veces eso es útil (por ejemplo si sabemos que vamos
+a querer agregar caracteres)
+
+\begin{verbatim}
+char ptr[20];
+
+strcpy(ptr, "Hola, Mundo");
+/* Sobran 2^3 caracteres: ptr[12] - ptr[19]. */
+\end{verbatim}
+
+\item Una fuente muy común de \textit{bugs} es intentar poner más
+caracteres de los que caben en el espacio asignado. Recordemos hacer
+lugar para \verb+\0+! Estos \textit{bugs} son una de las causas que
+pueden generar que la ejecución de un programa termine anormalmente con un
+\verb+segmentation fault+.
+
+\item Las funciones de la biblioteca NO toman en cuenta el tamaño de la
+memoria asignada. \textsf{C} asume que el programador sabe lo que
+hace... :-) \verb+Ver ejemplo ej5.c+
+
+\item Para muchas funciones de la forma \verb+strXXX+ existe una versión
+\verb+strnXXX+ que opera sobre los \verb+n+ primeros caracteres del array.
+Es recomendable usar estas funciones para evitar problemas desbordando arreglos.
+
+\item Notar que podemos usar un índice mayor a la longitud del string
+sin que nos dé error. \verb+Ver ejemplo ej5.c+.
+
+\begin{verbatim}
+/* Probar en Haskell: "Hello, World!" !! 20 */
+\end{verbatim}
+
+\end{itemize}
+
+\subsection*{Funciones útiles}
+
+Estas funciones están documentadas en la sección 3 de las \textit{man
+pages}.
+
+\begin{itemize}
+
+\item Funciones que operan sobre caracteres: \footnote{Si operan sobre
+caracteres, ¿por qué no hay \texttt{char} en los prototipos?}
+\footnote{¿no deberían retornar \texttt{bool} o algo similar?}
+
+\begin{verbatim}
+#include <ctype.h>
+
+int isalnum (int c);
+int isalpha (int c);
+int isascii (int c);
+int isblank (int c);
+int iscntrl (int c);
+int isdigit (int c);
+int isgraph (int c);
+int islower (int c);
+int isprint (int c);
+int ispunct (int c);
+int isspace (int c);
+int isupper (int c);
+int isxdigit (int c);
+\end{verbatim}
+
+\item Funciones que operan sobre strings:
+
+\begin{verbatim}
+#include <string.h>
+
+char *strcpy(char *dest, const char *orig);
+char *strcat(char *dest, const char *src);
+char *strstr(const char *haystack, const char *needle);
+size_t strspn(const char *s, const char *acepta);
+size_t strcspn(const char *s, const char *rechaza);
+\end{verbatim}
+
+\end{itemize}
+
+\section*{Referencias}
+
+\begin{itemize}
+\item The \textsf{C} Programming Language - Brian Kernighan, Dennis Ritchie
+\item \url{http://www.harpercollege.edu/bus-ss/cis/166/mmckenzi/contents.htm}
+\item \url{http://www.harpercollege.edu/bus-ss/cis/166/mmckenzi/lect12/l12.htm}
+\item \url{http://bstring.sourceforge.net}
+\item \url{http://www.cs.princeton.edu/courses/archive/spring02/cs217/asgts/ish/ish.html}
+\item \url{http://www.cs.princeton.edu/courses/archive/spring02/cs217/asgts/ish/ishhints.html}
+\end{itemize}
+
+\end{document}
